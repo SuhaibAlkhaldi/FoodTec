@@ -6,9 +6,15 @@ using RestaurantSys.DTOs.SignIn.Request;
 using RestaurantSys.DTOs.SignIn.Response;
 using RestaurantSys.DTOs.SignUp.Request;
 using RestaurantSys.DTOs.VerifyOTP.Request;
+using RestaurantSys.Helpers.Email;
+using RestaurantSys.Helpers.Hashing;
+using RestaurantSys.Helpers.Token;
 using RestaurantSys.Helpers.Validation;
+using RestaurantSys.Models;
 using System.Data;
 using System.Xml;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using static System.Net.WebRequestMethods;
 
 namespace RestaurantSys.Controllers
 {
@@ -26,6 +32,7 @@ namespace RestaurantSys.Controllers
             var message = " Account Created Successfully";
             try
             {
+                //var hashPassword = HashingHelper.HashValueWith384(input.Password);
                 if (Validation.IsFirstNameValid(input.FirstName) && Validation.IsLastNameValid(input.LastName) && Validation.IsUsernameValid(input.Username) && Validation.IsPhoneNumberValid(input.PhoneNumber) && Validation.IsPasswordValid(input.Password) && Validation.IsEmailValid(input.Email) && Validation.IsImageValid(input.ProfileImage))
                 {
                     var connectionString = _configuration.GetConnectionString("DefaultConnection");
@@ -37,7 +44,7 @@ namespace RestaurantSys.Controllers
                         command.Parameters.AddWithValue("@LastName", input.LastName);
                         command.Parameters.AddWithValue("@Username", input.Username);
                         command.Parameters.AddWithValue("@PhoneNumber", input.PhoneNumber);
-                        command.Parameters.AddWithValue("@Password", input.Password);
+                        command.Parameters.AddWithValue("@Password", HashingHelper.HashValueWith384(input.Password));
                         command.Parameters.AddWithValue("@Email", input.Email);
                         command.Parameters.AddWithValue("@RoleId", input.RoleId);
                         command.Parameters.AddWithValue("@ProfileImage", input.ProfileImage ?? (object)DBNull.Value);
@@ -47,6 +54,7 @@ namespace RestaurantSys.Controllers
                         await command.ExecuteNonQueryAsync();
                         connection.Close();
                     }
+                    await EmailHelper.SendEmail(input.Email, input.OTP, "Sign Up OTP", "Complete SignUp");
 
                 }
                 return StatusCode(201, message);
@@ -89,6 +97,7 @@ namespace RestaurantSys.Controllers
                             response.UserName = row["UserName"].ToString();
                             response.IsActive = Convert.ToBoolean(row["is_active"]);
                         }
+                        
 
 
                     }
@@ -105,7 +114,7 @@ namespace RestaurantSys.Controllers
 
 
         [HttpPost("SendOTP")]
-        public async Task<IActionResult> SendOTP([FromBody] string email)
+        public async Task<IActionResult> SendOTP(string email)
         {
             try
             {
@@ -125,7 +134,7 @@ namespace RestaurantSys.Controllers
                         command.ExecuteNonQuery();
                         connection.Close();
                     }
-                    Console.WriteLine($"OTP Sent to {email}: {otp}");
+                    await EmailHelper.SendEmail(email , otp , "Reset Password OTP" , "Complete Reset Password");
                 }
                 return Ok("OTP sent to email successfully");
             }
@@ -138,20 +147,25 @@ namespace RestaurantSys.Controllers
         [HttpPost("VerifyOTP")]
         public async Task<IActionResult> VerifyOTP([FromBody] VerifyOTPInputDTO input)
         {
+            input.Email = HashingHelper.HashValueWith384(input.Email);
             var result = 0;
             try
             {
                 var connectionString = _configuration.GetConnectionString("DefaultConnection");
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
-                    SqlCommand command = new SqlCommand("VerifyOtpCode", connection);
+                    SqlCommand command = new SqlCommand("VerifyOtpCode1", connection);
                     command.CommandType = CommandType.StoredProcedure;
                     command.Parameters.AddWithValue("@Email", input.Email);
                     command.Parameters.AddWithValue("@OtpCode", input.OTP_Code);
+                    var userID = command.Parameters.Add("@UserId");
+                    var roleName = command.Parameters.Add("@RoleName");
                     connection.Open();
                     result = (int)command.ExecuteScalar();
                     connection.Close();
+                    var response = TokenHelper.GenerateJWTToken(userID.ToString() , roleName.ToString());
                 }
+
                 if (result == 1)
                 {
                     return Ok("OTP Verified Successfully");
@@ -160,6 +174,7 @@ namespace RestaurantSys.Controllers
                 {
                     return StatusCode(400, "Wrong OTP");
                 }
+
             }
             catch (Exception ex)
             {
@@ -168,14 +183,17 @@ namespace RestaurantSys.Controllers
         }
 
 
-        [HttpPut("ResetPassword")]
+
+            [HttpPut("ResetPassword")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordInputDTO input)
         {
             
             try
             {
+
                 if (Validation.IsEmailValid(input.Email) && Validation.IsPasswordValid(input.Password))
                 {
+                    input.Password = HashingHelper.HashValueWith384( input.Email);
                     var connectionString = _configuration.GetConnectionString("DefaultConnection");
                     using (SqlConnection connection = new SqlConnection(connectionString))
                     {
