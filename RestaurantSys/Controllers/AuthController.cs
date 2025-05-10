@@ -76,11 +76,14 @@ namespace RestaurantSys.Controllers
                 {
                     var connectionString = _configuration.GetConnectionString("DefaultConnection");
                     using (SqlConnection connection = new SqlConnection(connectionString))
+                        
                     {
+                        
+
                         SqlCommand command = new SqlCommand("Signin", connection);
                         command.CommandType = CommandType.StoredProcedure;
                         command.Parameters.AddWithValue("@Email", input.Email);
-                        command.Parameters.AddWithValue("@Password", input.Password);
+                        command.Parameters.AddWithValue("@Password",HashingHelper.HashValueWith384( input.Password));
                         SqlDataAdapter adapter = new SqlDataAdapter(command);
                         DataTable dt = new DataTable();
                         adapter.Fill(dt);
@@ -97,7 +100,10 @@ namespace RestaurantSys.Controllers
                             response.UserName = row["UserName"].ToString();
                             response.IsActive = Convert.ToBoolean(row["is_active"]);
                         }
-                        
+
+                        // Generate JWT
+                        string token = TokenHelper.GenerateJWTToken(response.Id, response.RoleID, response.UserName);
+                        response.Token = token;
 
 
                     }
@@ -147,23 +153,23 @@ namespace RestaurantSys.Controllers
         [HttpPost("VerifyOTP")]
         public async Task<IActionResult> VerifyOTP([FromBody] VerifyOTPInputDTO input)
         {
-            input.Email = HashingHelper.HashValueWith384(input.Email);
+            
             var result = 0;
             try
             {
                 var connectionString = _configuration.GetConnectionString("DefaultConnection");
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
-                    SqlCommand command = new SqlCommand("VerifyOtpCode1", connection);
+                    SqlCommand command = new SqlCommand("VerifyOtpCode", connection);
                     command.CommandType = CommandType.StoredProcedure;
                     command.Parameters.AddWithValue("@Email", input.Email);
                     command.Parameters.AddWithValue("@OtpCode", input.OTP_Code);
-                    var userID = command.Parameters.Add("@UserId");
-                    var roleName = command.Parameters.Add("@RoleName");
+                    // var userID = command.Parameters.Add("@UserId");
+                    //var roleName = command.Parameters.Add("@RoleName");
                     connection.Open();
                     result = (int)command.ExecuteScalar();
                     connection.Close();
-                    var response = TokenHelper.GenerateJWTToken(userID.ToString() , roleName.ToString());
+                    //var response = TokenHelper.GenerateJWTToken(userID);
                 }
 
                 if (result == 1)
@@ -193,7 +199,7 @@ namespace RestaurantSys.Controllers
 
                 if (Validation.IsEmailValid(input.Email) && Validation.IsPasswordValid(input.Password))
                 {
-                    input.Password = HashingHelper.HashValueWith384( input.Email);
+                    input.Password = HashingHelper.HashValueWith384( input.Password);
                     var connectionString = _configuration.GetConnectionString("DefaultConnection");
                     using (SqlConnection connection = new SqlConnection(connectionString))
                     {
