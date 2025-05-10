@@ -8,5 +8,8 @@
         public string LastName { get; set; }
         public string UserName { get; set; }
         public bool IsActive { get; set; }
+        // NEW: Token returned after sign-in
+        public string Token { get; set; }
+
     }
 }

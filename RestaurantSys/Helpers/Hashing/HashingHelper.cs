@@ -7,8 +7,10 @@ namespace RestaurantSys.Helpers.Hashing
     {
         public static string HashValueWith384(string inputValue)
         {
+            var cleanInput = inputValue.Trim(); 
+
             //convert string to bytes array
-            var inputBytes = Encoding.UTF8.GetBytes(inputValue);
+            var inputBytes = Encoding.UTF8.GetBytes(cleanInput);
             //inlization hashing alogrthim object 
             var hasher = SHA384.Create();
             //compute hash

@@ -7,7 +7,7 @@ namespace RestaurantSys.Helpers.Token
 {
     public static class TokenHelper
     {
-        public static string GenerateJWTToken(string userID , string RoleName)
+        public static string GenerateJWTToken(int userID, int roleId, string username )
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
             string secret = "LongPrimarySecretForCapstoneProject";
@@ -17,13 +17,18 @@ namespace RestaurantSys.Helpers.Token
                 Expires = DateTime.UtcNow.AddMinutes(10),
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                    new Claim("UserID" , userID),
-                    new Claim("Role" , RoleName)
+                    new Claim("UserID" , userID.ToString()),
+                    new Claim("RoleId" , roleId.ToString()),
+                    new Claim("UserName", username)
+
+
+
                 }),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(tokenBytesKey), SecurityAlgorithms.HmacSha256Signature)
             };
             var tokenJson = jwtTokenHandler.CreateToken(descriptor);
             var token = jwtTokenHandler.WriteToken(tokenJson);
+            
             return token;
         }
 
