@@ -8,6 +8,7 @@ namespace RestaurantSys.Helpers.Email
         public static async Task SendEmail(string email , string code , string title , string message)
         {
             var apiKey = "";
+            
             var client = new SendGridClient(apiKey);
             var from = new EmailAddress("suhaibamjad73@gmail.com", "FoodTec Admin");
             var subject = title;

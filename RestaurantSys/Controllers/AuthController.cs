@@ -8,6 +8,7 @@ using RestaurantSys.DTOs.SignUp.Request;
 using RestaurantSys.DTOs.VerifyOTP.Request;
 using RestaurantSys.Helpers.Email;
 using RestaurantSys.Helpers.Hashing;
+using RestaurantSys.Helpers.Image;
 using RestaurantSys.Helpers.Token;
 using RestaurantSys.Helpers.Validation;
 using RestaurantSys.Models;
@@ -26,15 +27,24 @@ namespace RestaurantSys.Controllers
             _configuration = configuration;
         }
         [HttpPost("SignUp")]
-        public async Task<IActionResult> SignUp([FromBody] SignUpDTO input)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> SignUp([FromForm] SignUpDTO input)
         {
 
             var message = " Account Created Successfully";
             try
             {
-                //var hashPassword = HashingHelper.HashValueWith384(input.Password);
-                if (Validation.IsFirstNameValid(input.FirstName) && Validation.IsLastNameValid(input.LastName) && Validation.IsUsernameValid(input.Username) && Validation.IsPhoneNumberValid(input.PhoneNumber) && Validation.IsPasswordValid(input.Password) && Validation.IsEmailValid(input.Email) && Validation.IsImageValid(input.ProfileImage))
+                
+                if (Validation.IsFirstNameValid(input.FirstName) && Validation.IsLastNameValid(input.LastName) && Validation.IsUsernameValid(input.Username) && Validation.IsPhoneNumberValid(input.PhoneNumber) && Validation.IsPasswordValid(input.Password) && Validation.IsEmailValid(input.Email) && Validation.IsImageValid(input.ProfileImage.FileName))
                 {
+                    string? imagePath = null;
+
+                    if (input.ProfileImage != null)
+                    {
+                        imagePath = await ImageHelper.SaveImageAsync(input.ProfileImage);
+                    }
+
+
                     var connectionString = _configuration.GetConnectionString("DefaultConnection");
                     using (SqlConnection connection = new SqlConnection(connectionString))
                     {
@@ -47,7 +57,7 @@ namespace RestaurantSys.Controllers
                         command.Parameters.AddWithValue("@Password", HashingHelper.HashValueWith384(input.Password));
                         command.Parameters.AddWithValue("@Email", input.Email);
                         command.Parameters.AddWithValue("@RoleId", input.RoleId);
-                        command.Parameters.AddWithValue("@ProfileImage", input.ProfileImage ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@ProfileImage", imagePath ?? (object)DBNull.Value);
                         command.Parameters.AddWithValue("@JoinDate", input.JoinDate);
                         command.Parameters.AddWithValue("@Birthdate", input.BirthDate);
                         connection.Open();

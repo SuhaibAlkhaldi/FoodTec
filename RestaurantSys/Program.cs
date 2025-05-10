@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using RestaurantSys.Interface;
 using RestaurantSys.Models;
 using RestaurantSys.Service;
@@ -30,6 +31,11 @@ app.UseSwaggerUI();
 //    c.RoutePrefix = string.Empty;
 //});
 
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "Uploads")),
+    RequestPath = "/uploads"
+});
 app.UseHttpsRedirection();
 
 app.UseAuthorization();

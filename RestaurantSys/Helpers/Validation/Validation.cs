@@ -127,7 +127,7 @@ namespace RestaurantSys.Helpers.Validation
             string extension = Path.GetExtension(image).ToLower();
 
 
-            string[] allowedExtensions = { ".png", ".jpg", ".webp" };
+            string[] allowedExtensions = { ".png", ".jpg", ".webp","jpeg" };
 
             if (!allowedExtensions.Contains(extension))
                 throw new Exception("Only PNG, JPG, and WEBP image formats are allowed.");
