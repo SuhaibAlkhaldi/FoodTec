@@ -2,6 +2,8 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Identity.Client;
 using RestaurantSys.DTOs.ResetPassword.Request;
+using RestaurantSys.DTOs.SendOTP;
+using RestaurantSys.DTOs.SendOTP.Request;
 using RestaurantSys.DTOs.SignIn.Request;
 using RestaurantSys.DTOs.SignIn.Response;
 using RestaurantSys.DTOs.SignUp.Request;
@@ -19,6 +21,8 @@ using static System.Net.WebRequestMethods;
 
 namespace RestaurantSys.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class AuthController : Controller
     {
         private readonly IConfiguration _configuration;
@@ -31,11 +35,11 @@ namespace RestaurantSys.Controllers
         public async Task<IActionResult> SignUp([FromForm] SignUpDTO input)
         {
 
-            var message = " Account Created Successfully";
+            var message = " Account Created Successfully. Check your email to verify your account.";
             try
             {
-                
-                if (Validation.IsFirstNameValid(input.FirstName) && Validation.IsLastNameValid(input.LastName) && Validation.IsUsernameValid(input.Username) && Validation.IsPhoneNumberValid(input.PhoneNumber) && Validation.IsPasswordValid(input.Password) && Validation.IsEmailValid(input.Email) && Validation.IsImageValid(input.ProfileImage.FileName))
+               
+                if (Validation.IsFirstNameValid(input.FirstName) && Validation.IsLastNameValid(input.LastName) && Validation.IsUsernameValid(input.Username) && Validation.IsPhoneNumberValid(input.PhoneNumber) && Validation.IsPasswordValid(input.Password) && Validation.IsEmailValid(input.Email) && Validation.IsImageValid(input.ProfileImage))
                 {
                     string? imagePath = null;
 
@@ -44,6 +48,7 @@ namespace RestaurantSys.Controllers
                         imagePath = await ImageHelper.SaveImageAsync(input.ProfileImage);
                     }
 
+                    string verificationToken = Guid.NewGuid().ToString();
 
                     var connectionString = _configuration.GetConnectionString("DefaultConnection");
                     using (SqlConnection connection = new SqlConnection(connectionString))
@@ -60,11 +65,21 @@ namespace RestaurantSys.Controllers
                         command.Parameters.AddWithValue("@ProfileImage", imagePath ?? (object)DBNull.Value);
                         command.Parameters.AddWithValue("@JoinDate", input.JoinDate);
                         command.Parameters.AddWithValue("@Birthdate", input.BirthDate);
+                        command.Parameters.AddWithValue("@VerificationToken", verificationToken);
                         connection.Open();
                         await command.ExecuteNonQueryAsync();
                         connection.Close();
                     }
-                    await EmailHelper.SendEmail(input.Email, input.OTP, "Sign Up OTP", "Complete SignUp");
+                    
+                    string verificationUrl = $"https://localhost:44354/api/auth/verify?token={verificationToken}";
+
+                    string emailBody = $"<p>Click to verify your account:</p><p>{verificationUrl}</p>";
+
+
+
+
+
+                    await EmailHelper.SendVerificationEmail(input.Email, "Email Verification", emailBody);
 
                 }
                 return StatusCode(201, message);
@@ -130,11 +145,11 @@ namespace RestaurantSys.Controllers
 
 
         [HttpPost("SendOTP")]
-        public async Task<IActionResult> SendOTP(string email)
+        public async Task<IActionResult> SendOTP([FromBody] SendOTPRequestDTO input)
         {
             try
             {
-                if (Validation.IsEmailValid(email))
+                if (Validation.IsEmailValid(input.Email))
                 {
                     string otp = new Random().Next(1000, 9999).ToString();
                     DateTime otpExpiry = DateTime.Now.AddMinutes(10);
@@ -143,14 +158,14 @@ namespace RestaurantSys.Controllers
                     {
                         SqlCommand command = new SqlCommand("SendOtpToEmail", connection);
                         command.CommandType = CommandType.StoredProcedure;
-                        command.Parameters.AddWithValue("@Email", email);
+                        command.Parameters.AddWithValue("@Email", input.Email );
                         command.Parameters.AddWithValue("@OtpCode", otp);
                         command.Parameters.AddWithValue("@OtpExpiry", otpExpiry);
                         connection.Open();
                         command.ExecuteNonQuery();
                         connection.Close();
                     }
-                    await EmailHelper.SendEmail(email , otp , "Reset Password OTP" , "Complete Reset Password");
+                    await EmailHelper.SendOTPEmail(input.Email, otp, "Reset Password OTP", "Use the code below to reset your password:");
                 }
                 return Ok("OTP sent to email successfully");
             }
@@ -209,18 +224,27 @@ namespace RestaurantSys.Controllers
 
                 if (Validation.IsEmailValid(input.Email) && Validation.IsPasswordValid(input.Password))
                 {
-                    input.Password = HashingHelper.HashValueWith384( input.Password);
-                    var connectionString = _configuration.GetConnectionString("DefaultConnection");
-                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    if (input.Password == input.confirmPassword)
                     {
-                        SqlCommand command = new SqlCommand("ResetUserPassword", connection);
-                        command.CommandType = CommandType.StoredProcedure;
-                        command.Parameters.AddWithValue("@Email", input.Email);
-                        command.Parameters.AddWithValue("@NewPassword", input.Password);
-                        connection.Open();
-                        command.ExecuteNonQuery();
-                        connection.Close();
+                        input.Password = HashingHelper.HashValueWith384(input.Password);
+                        var connectionString = _configuration.GetConnectionString("DefaultConnection");
+                        using (SqlConnection connection = new SqlConnection(connectionString))
+                        {
+                            SqlCommand command = new SqlCommand("ResetUserPassword", connection);
+                            command.CommandType = CommandType.StoredProcedure;
+                            command.Parameters.AddWithValue("@Email", input.Email);
+                            command.Parameters.AddWithValue("@NewPassword", input.Password);
+                            connection.Open();
+                            command.ExecuteNonQuery();
+                            connection.Close();
+                        }
+
                     }
+                    else
+                    {
+                        throw new Exception("The passwords not mathched!");
+                    }
+                    
                 }
                 return Ok("Reset Password Successfully");
             }
@@ -229,5 +253,22 @@ namespace RestaurantSys.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+
+        [HttpGet("verify")]
+        public async Task<IActionResult> VerifyEmail([FromQuery] string token)
+        {
+            var connectionString = _configuration.GetConnectionString("DefaultConnection");
+            using var connection = new SqlConnection(connectionString);
+            await connection.OpenAsync();
+
+            var command = new SqlCommand("UPDATE [User] SET is_verified = 1, verification_token = NULL WHERE verification_token = @Token", connection);
+            command.Parameters.AddWithValue("@Token", token);
+
+            int rowsAffected = await command.ExecuteNonQueryAsync();
+            return rowsAffected > 0
+                ? Ok("Email verified successfully.")
+                : BadRequest("Invalid or expired token.");
+        }
+
     }
 }

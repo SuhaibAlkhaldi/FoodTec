@@ -118,21 +118,15 @@ namespace RestaurantSys.Helpers.Validation
             return true;
         }
 
-        public static bool IsImageValid(string image)
+        public static bool IsImageValid(IFormFile? imageFile)
         {
+            if (imageFile == null || imageFile.Length == 0)
+                return true; // Optional image is valid if not provided
 
-            if (string.IsNullOrWhiteSpace(image))
-                return true;
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+            string extension = Path.GetExtension(imageFile.FileName).ToLower();
 
-            string extension = Path.GetExtension(image).ToLower();
-
-
-            string[] allowedExtensions = { ".png", ".jpg", ".webp","jpeg" };
-
-            if (!allowedExtensions.Contains(extension))
-                throw new Exception("Only PNG, JPG, and WEBP image formats are allowed.");
-
-            return true;
+            return allowedExtensions.Contains(extension);
         }
 
 
