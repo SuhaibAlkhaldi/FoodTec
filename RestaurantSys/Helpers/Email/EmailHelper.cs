@@ -5,17 +5,30 @@ namespace RestaurantSys.Helpers.Email
 {
     public static class EmailHelper
     {
-        public static async Task SendEmail(string email , string code , string title , string message)
+        private static readonly string apiKey = "";
+        private static readonly EmailAddress sender = new EmailAddress("suhaibamjad73@gmail.com", "FoodTec Admin");
+
+        // For account verification email
+        public static async Task SendVerificationEmail(string email, string subject, string verificationLinkHtml)
         {
-            var apiKey = "";
-            
+            await SendEmailInternal(email, subject, verificationLinkHtml);
+        }
+
+        // For OTP email
+        public static async Task SendOTPEmail(string email, string otpCode, string subject, string message)
+        {
+            string htmlBody = $"{message}<br/><strong>Your OTP Code:</strong> {otpCode}";
+            await SendEmailInternal(email, subject, htmlBody);
+        }
+
+        // Shared internal method
+        private static async Task SendEmailInternal(string email, string subject, string htmlMessage)
+        {
             var client = new SendGridClient(apiKey);
-            var from = new EmailAddress("suhaibamjad73@gmail.com", "FoodTec Admin");
-            var subject = title;
             var to = new EmailAddress(email, "FoodTec");
-            var plainTextContent = $"Dear User {message} Please Use The Following OTP Code {code} It Will Be Expired Within 10 Minutes";
-            //var htmlContent = "<strong>and easy to do anywhere, even with C#</strong>";
-            var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, "");
+            var plainTextContent = htmlMessage;
+
+            var msg = MailHelper.CreateSingleEmail(sender, to, subject, plainTextContent, htmlMessage);
             var response = await client.SendEmailAsync(msg);
         }
     }
