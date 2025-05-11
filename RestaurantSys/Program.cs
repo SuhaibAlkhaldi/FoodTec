@@ -19,6 +19,8 @@ builder.Services.AddScoped<ICategory , CategoryService>();
 builder.Services.AddScoped<IOffer, OfferService>();
 builder.Services.AddScoped<IItem, ItemService>();
 builder.Services.AddScoped<INotification, NotificationService>();
+builder.Services.AddScoped<IFavorite, FavoriteService>();
+builder.Services.AddScoped<IOrderItem, OrderItemService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

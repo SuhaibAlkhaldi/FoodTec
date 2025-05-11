@@ -8,6 +8,7 @@ namespace RestaurantSys.Interface
         public Task<GetItemOutputDTO> GetItemByCategoryID(int categoryID);
         public Task<List<FavoriteItemOutputDTO>> GetFavoriteItem(int userID);
         public Task<List<GetItemOutputDTO>> GetItemById(int id);
-        
+        public Task<List<GetTopRecommendedItemDTO>> GetTopRecommendedItem();
+
     }
 }

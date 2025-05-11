@@ -133,5 +133,30 @@ namespace RestaurantSys.Service
             }
             
         }
+
+        public async Task<List<GetTopRecommendedItemDTO>> GetTopRecommendedItem()
+        {
+            try
+            {
+                var result = await _context.OrderItems.GroupBy(x => x.ItemId)
+                    .OrderByDescending(x => x.Count()).Take(10).Select(g => new GetTopRecommendedItemDTO
+                    {
+                        Id = g.First().Item.Id,
+                        NameEn = g.First().Item.NameEn,
+                        NameAr = g.First().Item.NameAr,
+                        DescriptionEn = g.First().Item.DescriptionEn,
+                        DescriptionAr = g.First().Item.DescriptionAr,
+                        Price = g.First().Item.Price,
+                        Image = g.First().Item.Image
+                    }).ToListAsync();
+
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
+        }
     }
 }

@@ -62,11 +62,27 @@ namespace RestaurantSys.Controllers
         }
 
         [HttpGet("GetItemById/{id}")]
-        public async Task<IActionResult> GetItemById([FromRoute]int id)
+        public async Task<IActionResult> GetItemById([FromRoute] int id)
         {
             try
             {
                 var result = await _item.GetItemById(id);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+
+
+        [HttpGet("GetTopRecomendedItem")]
+        public async Task<IActionResult> GetTopRecomendedItem()
+        {
+            try
+            {
+                var result = await _item.GetTopRecommendedItem();
                 return Ok(result);
             }
             catch (Exception ex)
