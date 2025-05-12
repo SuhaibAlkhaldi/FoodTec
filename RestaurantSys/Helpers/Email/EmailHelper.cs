@@ -4,8 +4,8 @@ using SendGrid;
 namespace RestaurantSys.Helpers.Email
 {
     public static class EmailHelper
-    {
-        private static readonly string apiKey = "";
+    { 
+        private static readonly string apiKey = ""; 
         private static readonly EmailAddress sender = new EmailAddress("suhaibamjad73@gmail.com", "FoodTec Admin");
 
         // For account verification email
