@@ -71,7 +71,9 @@ namespace RestaurantSys.Controllers
                         connection.Close();
                     }
                     
-                    string verificationUrl = $"https://localhost:44354/api/auth/verify?token={verificationToken}";
+                    //string verificationUrl = $"https://localhost:44354/api/auth/verify?token={verificationToken}";
+                    string verificationUrl = $"https://team12.zero1planet.com/api/auth/verify?token={verificationToken}";
+
 
                     string emailBody = $"<p>Click to verify your account:</p><p>{verificationUrl}</p>";
 
